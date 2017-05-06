@@ -22,7 +22,9 @@ void readFromFile(int fileDesc, char buffer[]);
  * @param isMultDirectories checks if there are multiple directories.
  * @return path if found, else NULL.
  */
-char *findCFile(char *initPath, struct dirent *studentDirent);
+char *
+findCFile(char *initPath, struct dirent *studentDirent, int *isMultDirectories,
+          int *depth);
 
 /**
  * Checks if the given path belongs to a directory.
@@ -46,7 +48,6 @@ int main(int argc, char *argv[]) {
     char          inputPath[MAX_SIZE];
     char          outputPath[MAX_SIZE];
     int           configFile;
-    int           depth;
     DIR           *mainDir;
     struct dirent *studentDirent;
 
@@ -84,19 +85,28 @@ int main(int argc, char *argv[]) {
             continue;
         }
 
-        studentPath = findCFile(dirPath, studentDirent);
+        int isMultDirectories = 0;
+        int depth             = 0;
+        studentPath = findCFile(dirPath, studentDirent, &isMultDirectories,
+                                &depth);
 
         if (studentPath == 0) {
 
             printf("No c: %s\n", studentDirent->d_name);
+
+            if (isMultDirectories) {
+
+                printf("Multiple directories.\n");
+            }
         } else {
-            printf("Found: %s\n", studentPath);
+            printf("Found: %s depth: %d\n", studentPath, depth);
         }
 
     }
 }
 
-char *findCFile(char *initPath, struct dirent *studentDirent) {
+char *findCFile(char *initPath, struct dirent *studentDirent,
+                int *isMultDirectories, int *depth) {
 
     int  stop       = 0;
     int  dirCounter = 0;
@@ -125,6 +135,7 @@ char *findCFile(char *initPath, struct dirent *studentDirent) {
         }
 
         dir = opendir(finalPath);
+        *depth += 1;
 
         dirCounter = 0;
 
@@ -141,6 +152,7 @@ char *findCFile(char *initPath, struct dirent *studentDirent) {
             //Stop searching if more that on inner folder exists.
             if (dirCounter > 1) {
 
+                *isMultDirectories = 1;
                 closedir(dir);
                 return 0;
             }
