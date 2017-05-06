@@ -19,6 +19,7 @@ void readFromFile(int fileDesc, char buffer[]);
  * Searches for a C file in the given directory.
  * @param initPath initial path to search.
  * @param studentDirent student dirent to the path.
+ * @param isMultDirectories checks if there are multiple directories.
  * @return path if found, else NULL.
  */
 char *findCFile(char *initPath, struct dirent *studentDirent);
@@ -87,10 +88,9 @@ int main(int argc, char *argv[]) {
 
         if (studentPath == 0) {
 
-            //TODO fail student
+            printf("No c: %s\n", studentDirent->d_name);
         } else {
-
-            //TODO exec
+            printf("Found: %s\n", studentPath);
         }
 
     }
@@ -100,52 +100,28 @@ char *findCFile(char *initPath, struct dirent *studentDirent) {
 
     int  stop       = 0;
     int  dirCounter = 0;
-    int  pathLength;
-    int  studentLength;
-    char *finalPath = 0;
-    char *tempPath  = 0;
-    char *nextFile  = 0;
+    char finalPath[MAX_SIZE];
+    char nextFile[MAX_SIZE];
     DIR  *dir;
 
-    finalPath = (char *) malloc(strlen(initPath) * sizeof(char));
     strcpy(finalPath, initPath);
-    nextFile = studentDirent->d_name;
+    strcpy(nextFile, studentDirent->d_name);
 
     while (!stop) {
 
-//        if (strcmp(studentDirent->d_name, ".") == 0 ||
-        //           strcmp(studentDirent->d_name, "..") == 0) {
-        //          continue;
-        //    }
-
-        pathLength    = strlen(finalPath);
-        studentLength = strlen(nextFile);
-
-        if (tempPath != 0) {
-
-            free(tempPath);
-        }
-
+        //TODO now that alloc is not needed, remove tempPath
         //Concatenate next path.
-        tempPath = (char *) malloc(pathLength * sizeof(char));
-        strcpy(tempPath, finalPath);
-
-        if (finalPath != 0) {
-
-            free(finalPath);
-        }
-
-        finalPath = (char *) malloc(
-                (pathLength + studentLength) * sizeof(char));
-
-        strcpy(finalPath, tempPath);
         strcat(finalPath, "/");
         strcat(finalPath, nextFile);
 
         //Check if found the C file.
         if (!isDirectory(finalPath)) {
 
-            return finalPath;
+            //Return final path.
+            char *retPath = (char *) malloc(strlen(finalPath) * sizeof(char));
+            strcpy(retPath, finalPath);
+
+            return retPath;
         }
 
         dir = opendir(finalPath);
@@ -160,24 +136,26 @@ char *findCFile(char *initPath, struct dirent *studentDirent) {
                 continue;
             }
 
-            //Copy next name.
-            int tempLength = strlen(studentDirent->d_name);
-            //TODO free nextFile
-            nextFile = (char*)malloc(tempLength * sizeof(char));
-            strcpy(nextFile, studentDirent->d_name);
-
             dirCounter++;
 
+            //Stop searching if more that on inner folder exists.
             if (dirCounter > 1) {
 
-                //TODO free all the allocated vars, make a separate function if needed
                 closedir(dir);
                 return 0;
             }
+
+            //TODO does using strcpy add \0 at the end? if not then add with strcat
+            //Copy next name.
+            strcpy(nextFile, studentDirent->d_name);
         }
 
-        nextFile = (char*)malloc(strlen(studentDirent->d_name) * sizeof(char));
-        strcpy(nextFile, studentDirent->d_name);
+        //Check if the path contained another file.
+        if (dirCounter == 0) {
+
+            closedir(dir);
+            return 0;
+        }
 
         //TODO if it doesn't cause any problems
         //closedir(dir);
