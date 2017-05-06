@@ -9,6 +9,13 @@
 #define MAX_SIZE 160
 
 /**
+ * Writes a message to the given file.
+ * @param file file descriptor.
+ * @param message message to write.
+ */
+void writeToFile(int file, char *message);
+
+/**
  * Reads a line from a file into the given buffer.
  * @param fileDesc a file descriptor.
  * @param buffer array.
@@ -48,6 +55,7 @@ int main(int argc, char *argv[]) {
     char          inputPath[MAX_SIZE];
     char          outputPath[MAX_SIZE];
     int           configFile;
+    int           results;
     DIR           *mainDir;
     struct dirent *studentDirent;
 
@@ -78,6 +86,10 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
+    results = open("results.csv", O_CREAT | O_WRONLY,
+                   0777);
+
+    //Run over all the students.
     while ((studentDirent = readdir(mainDir)) != 0) {
 
         if (strcmp(studentDirent->d_name, ".") == 0 ||
@@ -92,17 +104,37 @@ int main(int argc, char *argv[]) {
 
         if (studentPath == 0) {
 
-            printf("No c: %s\n", studentDirent->d_name);
-
             if (isMultDirectories) {
 
+                //TODO grade missing
+                //TODO is \n necessary when writing to .csv
+                char message[MAX_SIZE];
+                snprintf(message, MAX_SIZE, "%s,MULTIPLE_DIRECTORIES\n",
+                         studentDirent->d_name);
+
+                writeToFile(results, message);
+
                 printf("Multiple directories.\n");
+            } else {
+
+                char message[MAX_SIZE];
+                snprintf(message, MAX_SIZE, "%s,NO_C_FILE\n",
+                         studentDirent->d_name);
+
+                writeToFile(results, message);
             }
+
+            printf("No c: %s\n", studentDirent->d_name);
+
+
         } else {
             printf("Found: %s depth: %d\n", studentPath, depth);
         }
 
     }
+
+    //TODO check if all opened files were closed.
+    close(results);
 }
 
 char *findCFile(char *initPath, struct dirent *studentDirent,
@@ -181,6 +213,20 @@ int isDirectory(char *path) {
 
     return S_ISDIR(pathStat.st_mode);
 
+}
+
+void writeToFile(int file, char *message) {
+
+    int bytesWrote;
+
+    bytesWrote = write(file, message, strlen(message));
+
+    //Check that the message was written.
+    if (bytesWrote < 0) {
+
+        perror("Error: failed to write to file.\n");
+        exit(1);
+    }
 }
 
 void readFromFile(int fileDesc, char buffer[]) {
