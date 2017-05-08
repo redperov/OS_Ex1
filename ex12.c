@@ -5,6 +5,7 @@
 #include <dirent.h>
 #include <memory.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 
 #define MAX_SIZE 160
 
@@ -54,6 +55,7 @@ int main(int argc, char *argv[]) {
     char          dirPath[MAX_SIZE];
     char          inputPath[MAX_SIZE];
     char          outputPath[MAX_SIZE];
+    char          studentDir[MAX_SIZE];
     int           configFile;
     int           results;
     DIR           *mainDir;
@@ -72,8 +74,8 @@ int main(int argc, char *argv[]) {
 
     //Read the file paths.
     readFromFile(configFile, dirPath);
-    //readFromFile(configFile, inputPath);
-    //readFromFile(configFile, outputPath);
+    readFromFile(configFile, inputPath);
+    readFromFile(configFile, outputPath);
 
     close(configFile);
 
@@ -129,6 +131,187 @@ int main(int argc, char *argv[]) {
 
         } else {
             printf("Found: %s depth: %d\n", studentPath, depth);
+
+            pid_t compilePId;
+            pid_t execPId;
+            int   compileStatus;
+            int   execStatus;
+            int   isDirChanged;
+
+            compilePId = fork();
+
+            if (compilePId < 0) {
+
+                perror("Error: fork failed.\n");
+                exit(1);
+            }
+
+            if (compilePId == 0) {
+
+                //Move to student directory.
+                strcpy(studentDir, dirPath);
+                strcat(studentDir, "/");
+                strcat(studentDir, studentDirent->d_name);
+
+                //TODO go one dir up at the end.
+                isDirChanged = chdir(studentDir);
+
+                //Check if changing directory succeeded.
+                if (isDirChanged < 0) {
+
+                    perror("Error: failed to change directory.\n");
+                    exit(1);
+                }
+                //TODO change student.out to a.out
+                char *args[] = {"gcc", studentPath, "-o", "student.out", 0};
+                int  retExec;
+
+                printf("Enter child process.\n");
+                retExec = execvp("gcc", args);
+
+                if(retExec == -1){
+
+                    perror("Error: execution failed.\n");
+                    exit(1);
+                }
+
+            } else {
+
+                //TODO should compile all files and then execute and use fork to save time?
+
+                wait(&compileStatus);
+
+                if (WIFEXITED(compileStatus)) {
+
+                    printf("finished compileStatus:%d.\n",
+                           WEXITSTATUS(compileStatus));
+
+                    //Check if compilation succeeded.
+                    if (WEXITSTATUS(compileStatus) == 1) {
+
+                        char message[MAX_SIZE];
+                        snprintf(message, MAX_SIZE, "%s,COMPILATION_ERROR\n",
+                                 studentDirent->d_name);
+
+                        writeToFile(results, message);
+
+                    } else {
+
+                        execPId = fork();
+
+                        if (execPId < 0) {
+
+                            perror("Error: fork failed.\n");
+                            exit(1);
+                        }
+
+                        if (execPId == 0) {
+
+                            //TODO change student.out to a.out
+                            char *argsStudent[] = {"./student.out", inputPath, 0};
+                            int studentOutputFile;
+                            int inputFile;
+                            int execVal;
+
+                            studentOutputFile = open("studentOutput.txt", O_CREAT | O_WRONLY, 777);
+
+                            if(studentOutputFile < 0){
+
+                                perror("Error: failed to open file.\n");
+                                exit(1);
+                            }
+
+                            inputFile = open(inputPath, O_RDONLY);
+
+                            if(inputFile < 0){
+
+                                perror("Error: failed to open file.\n");
+                                exit(1);
+                            }
+
+                            //Redirect input and output to files.
+                            dup2(inputFile, 0);
+                            dup2(studentOutputFile, 1);
+
+                            close(studentOutputFile);
+                            close(inputFile);
+
+                            execVal = execvp("./student.out", argsStudent);
+
+                            if(execVal == -1){
+
+                                perror("Error: execution failed.\n");
+                                exit(1);
+                            }
+                        }
+                        else{
+
+                            wait(&execStatus);
+
+                            if(WIFEXITED(execStatus)){
+
+                                printf("finished execStatus:%d.\n",
+                                       WEXITSTATUS(execStatus));
+
+                                if(WEXITSTATUS(execStatus) == 1){
+
+                                    //TODO should there be a handle to a runtime error?
+                                }
+                                else{
+
+                                    pid_t compPId;
+                                    int compStatus;
+
+                                    compPId = fork();
+
+                                    if(compPId == 0){
+
+                                    }
+                                    else{
+
+                                        wait(&compStatus);
+
+                                        if(WIFEXITED(compStatus)){
+
+                                            printf("finished execStatus:%d.\n",
+                                                   WEXITSTATUS(execStatus));
+
+                                            if(WEXITSTATUS(compStatus) == 1){
+
+                                                perror("Error: comparison failed.\n");
+                                                exit(1);
+                                            }
+                                    }
+
+                                    char *argsComp[] = {"./comp.out", "studentOutput.txt", outputPath, 0};
+                                    int compExec;
+
+                                    compExec = execvp("./comp.out", argsComp);
+
+                                    if(compExec == -1){
+
+                                        perror("Error: execution failed.\n");
+                                        exit(1);
+                                    }
+                                }
+                            }
+                            else{
+
+                                //TODO should you write error and even exit in that case
+                                perror("Execution failed.\n");
+                                exit(1);
+                            }
+                        }
+
+
+                    }
+
+                } else {
+                    //TODO should you write error and even exit in that case
+                    perror("Execution failed.\n");
+                    exit(1);
+                }
+            }
         }
 
     }
