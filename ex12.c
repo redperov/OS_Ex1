@@ -23,6 +23,18 @@ typedef struct {
 
 typedef struct {
 
+    //Student's feedback.
+    char feedback[MAX_SIZE];
+
+    //Student's grade.
+    int grade;
+} Result;
+
+typedef struct {
+
+    //Student's name.
+    char *name;
+
     //Student's directory path.
     char *dirPath;
 
@@ -48,7 +60,11 @@ typedef struct {
     //Boolean does the student have multiple directories.
     int isMultipleDirectories;
 
+    //Student's status.
     Status status;
+
+    //Student's result.
+    Result result;
 
 } Student;
 
@@ -81,6 +97,13 @@ findCFile(char *initPath, Student *student);
  * @return boolean.
  */
 int isDirectory(char *path);
+
+/**
+ * Checks that the given path leads to a C file.
+ * @param path path.
+ * @return 1 true, 0 false.
+ */
+int isCFile(char *path);
 
 /**
  * Adds error message to a student in the results file.
@@ -127,6 +150,18 @@ int executeStudentFile(Student *student, char *inputFilePath);
 int compareStudentFile(Student *student, char *correctOutput,
                        char *studentOutput);
 
+/**
+ * Handles the case in which a C file was not found.
+ * @param student student.
+ */
+void handleNoCFile(Student *student);
+
+/**
+ * Writes the student's result into the results file.
+ * @param student student.
+ */
+void writeStudentResult(Student *student);
+
 int main(int argc, char *argv[]) {
 
     //Check that the number of command line arguments is correct.
@@ -144,6 +179,7 @@ int main(int argc, char *argv[]) {
     char          studentDir[MAX_SIZE];
     int           configFile;
     int           results;
+    int           closeValue;
     DIR           *mainDir;
     struct dirent *studentDirent;
 
@@ -163,7 +199,13 @@ int main(int argc, char *argv[]) {
     readFromFile(configFile, inputPath);
     readFromFile(configFile, outputPath);
 
-    close(configFile);
+    closeValue = close(configFile);
+
+    if (closeValue < 0) {
+
+        perror("Error: failed to close file.\n");
+        exit(1);
+    }
 
     mainDir = opendir(dirPath);
 
@@ -175,130 +217,207 @@ int main(int argc, char *argv[]) {
     }
 
     //Creates the results file.
-    results = open("results.csv", O_CREAT | O_WRONLY,
-                   0777);
+    results = open("results.csv", O_CREAT, 0777);
+
+    //Check if results file was opened.
+    if (results < 0) {
+
+        perror("Error: failed to open file.\n");
+        exit(1);
+    }
+
+    //Close the results file.
+    closeValue = close(results);
+
+    //Check if closed file.
+    if (closeValue < 0) {
+
+        perror("Error: failed to close file.\n");
+        exit(1);
+    }
 
     //Run over all the students.
     while ((studentDirent = readdir(mainDir)) != 0) {
 
+        //Check if read from directory.
+        if (studentDirent == 0) {
+
+            perror("Error: failed to read from directory.\n");
+            exit(1);
+        }
+
+        //Ignore inner directories.
         if (strcmp(studentDirent->d_name, ".") == 0 ||
             strcmp(studentDirent->d_name, "..") == 0) {
             continue;
         }
 
-        Student student;
+        //Create student handler.
+        //TODO free student and all its content
+        Student *student;
 
-        student.dirent   = studentDirent;
-        student.homePath = dirPath;
+        student = (Student *) malloc(sizeof(Student));
+        student->dirent   = studentDirent;
+        student->name     = studentDirent->d_name;
+        student->homePath = dirPath;
+        student->depth    = -1;
+        strcpy(student->result.feedback, "\0");
 
-        writeToFile(results, student.dirent->d_name);
+        //Set student's name in results file.
+        //writeToFile(results, student.dirent->d_name);
 
         //Search for the student's C file.
-        studentPath = findCFile(dirPath, &student);
+        //TODO maybe change this and next line to if succeeded and that's it
+        studentPath = findCFile(dirPath, student);
 
-        student.cFilePath = studentPath;
+        student->cFilePath = studentPath;
 
         //Check if C file was found.
-        if (student.cFilePath == 0) {
+        if (student->cFilePath == 0) {
 
-            //Check if the reason is multiple directories.
-            if (student.isMultipleDirectories) {
-
-                //TODO grade missing
-                //TODO is \n necessary when writing to .csv
-                writeToFile(results, ",MULTIPLE_DIRECTORIES");
-
-                printf("Multiple directories.\n");
-
-            } else {
-
-                writeToFile(results, ",NO_C_FILE");
-            }
-
-            printf("No c: %s\n", student.dirent->d_name);
-
+            handleNoCFile(student);
 
         } else {
 
-            printf("Found: %s depth: %d\n", student.cFilePath, student.depth);
+            printf("Found: %s depth: %d\n", student->cFilePath, student->depth);
 
             int compileResult;
             int executeResult;
             int compareResult;
             int chDirResult;
+            int unlinkResult;
+
+            //Set student's grade tp 100 - 10 * depth.
+            //TODO make sure that the initial grade can only be 100 and not lower because of a previous mistake.
+            //TODO make sure acceptable depth is 0 and not 1 in findCFile
+            student->result.grade = 100 - (10 * student->depth);
+
+            if (student->depth > 0) {
+                strcat(student->result.feedback, ",WRONG_DIRECTORY");
+            }
 
             //compiles the C file.
-            compileResult = compileStudentFile(&student);
+            compileResult = compileStudentFile(student);
 
+            //Check if compilation failed.
             if (compileResult == 0) {
 
-                writeToFile(results, ",COMPILATION_ERROR");
-                //TODO make sure the main moves to the next student.
+                //Set student's grade tp 0.
+                student->result.grade = 0;
+
+                //writeToFile(results, ",COMPILATION_ERROR");
+                strcat(student->result.feedback, ",COMPILATION_ERROR");
+                writeStudentResult(student);
+                //TODO make sure the there are no additional files created that weren't deleted
                 continue;
             }
 
-            executeResult = executeStudentFile(&student, inputPath);
+            //TODO handle timeout
+            executeResult = executeStudentFile(student, inputPath);
 
             if (executeResult == 0) {
 
                 //TODO check what to do in that case, maybe just perror and exit
             }
 
-            compareResult = compareStudentFile(&student, outputPath,
+            unlinkResult = unlink("student.out");
+
+            //Check if unlinked file.
+            if (unlinkResult < 0) {
+
+                perror("Error: failed to unlink file.\n");
+                exit(1);
+            }
+
+            //Compare the student's result to the correct answer.
+            compareResult = compareStudentFile(student, outputPath,
                                                "studentOutput.txt");
 
+            //Handle comparison result.
             switch (compareResult) {
-                case -1:
-                    writeToFile(results, "BAD_OUTPUT");
-                    break;
-                case 0:
-                    writeToFile(results, "SIMILAR_OUTPUT");
-                    break;
+
                 case 1:
-                    writeToFile(results, "WRONG_DIRECTORY");
+                    //writeToFile(results, "WRONG_DIRECTORY");
+                    strcat(student->result.feedback, ",GREAT_JOB");
+                    break;
+
+                case 2:
+                    //Set student's grade grade - 30.
+                    student->result.grade -= 30;
+                    //writeToFile(results, "SIMILAR_OUTPUT");
+                    strcat(student->result.feedback, ",SIMILAR_OUTPUT");
+                    break;
+
+                case 3:
+                    //Set student's grade tp 0.
+                    student->result.grade = 0;
+                    // writeToFile(results, "BAD_OUTPUT");
+                    strcat(student->result.feedback, ",BAD_OUTPUT");
                     break;
 
                 default:
                     break;
             }
 
-            //Return back to main directory.
-            chDirResult = chdir(mainPath);
+            //Unlink student's output file.
+            unlinkResult = unlink("studentOutput.txt");
 
-            if (chDirResult == -1) {
+            //Check if unlinked file.
+            if (unlinkResult < 0) {
 
-                perror("Error: chdir failed");
+                perror("Error: failed to unlink file.\n");
                 exit(1);
             }
+
+//            //Return back to main directory.
+//            chDirResult = chdir(mainPath);
+//
+//            if (chDirResult == -1) {
+//
+//                perror("Error: change directory failed.\n");
+//                exit(1);
+//            }
         }
 
-        writeToFile(results, "\n");
+        //Finish writing the student's result.
+        //writeToFile(results, "\n");
+
+        //Write student's result.
+        writeStudentResult(student);
     }
 
 //TODO check if all opened files were closed.
-    close(results);
+    /*closeValue = close(results);
+
+    if (closeValue < 0) {
+
+        perror("Error: failed to close file.\n");
+        exit(1);
+    }*/
 }
 
 char *findCFile(char *initPath, Student *student) {
 
     int  stop       = 0;
     int  dirCounter = 0;
+    int  isCFound   = 0;
     char finalPath[MAX_SIZE];
     char nextFile[MAX_SIZE];
     DIR  *dir;
 
     strcpy(finalPath, initPath);
-    strcpy(nextFile, student->dirent->d_name);
+    strcat(finalPath, "/");
+    strcat(finalPath, student->dirent->d_name);
 
     while (!stop) {
 
         //TODO now that alloc is not needed, remove tempPath
         //Concatenate next path.
-        strcat(finalPath, "/");
-        strcat(finalPath, nextFile);
+        //strcat(finalPath, "/");
+        //strcat(finalPath, nextFile);
 
         //Check if found the C file.
-        if (!isDirectory(finalPath)) {
+        if (isCFound) {
 
             //Return final path.
             //TODO free
@@ -311,43 +430,115 @@ char *findCFile(char *initPath, Student *student) {
         }
 
         dir = opendir(finalPath);
+
+        //Check if directory was opened.
+        if (dir == 0) {
+
+            perror("Error: failed to open directory.\n");
+            exit(1);
+        }
+
         student->depth += 1;
 
         dirCounter = 0;
 
         //Checks the amount of folders the student has is legal.
+        //TODO make sure folder is not empty also
         while ((student->dirent = readdir(dir)) != 0) {
+
+            //Check if read from directory.
+            if (student->dirent == 0) {
+
+                perror("Error: failed to read directory.\n");
+                exit(1);
+            }
 
             if (strcmp(student->dirent->d_name, ".") == 0 ||
                 strcmp(student->dirent->d_name, "..") == 0) {
                 continue;
             }
 
-            dirCounter++;
+            char temp[MAX_SIZE];
+            strcpy(temp, finalPath);
+            strcat(temp, "/");
+            strcat(temp, student->dirent->d_name);
 
-            //Stop searching if more that on inner folder exists.
-            if (dirCounter > 1) {
+            if (isDirectory(temp)) {
 
-                student->isMultipleDirectories = 1;
-                closedir(dir);
-                return 0;
+                strcpy(finalPath, temp);
+                dirCounter++;
             }
 
-            //TODO does using strcpy add \0 at the end? if not then add with strcat
-            //Copy next name.
-            strcpy(nextFile, student->dirent->d_name);
+            if (isCFile(temp)) {
+
+                strcpy(finalPath, temp);
+                isCFound = 1;
+                break;
+            }
         }
 
-        //Check if the path contained another file.
-        if (dirCounter == 0) {
+        //Stop searching if more that on inner folder exists.
+        //TODO check in Piazza, if c file was found but isMultipleDirectories than write that in results, then move isCFound inside if()
+        //TODO also make sure to change that in main so that it would continue to execute the file
+        if ((dirCounter > 1) && !isCFound) {
+
+            int closeValue;
+
+            student->isMultipleDirectories = 1;
+            closeValue = closedir(dir);
+
+            //Check if the directory was closed.
+            if (closeValue < 0) {
+
+                perror("Error: failed to close directory");
+                exit(1);
+            }
+
+            return 0;
+        }
+
+        //Check if there were sub-directories.
+        if (dirCounter == 0 && !isCFound) {
 
             closedir(dir);
             return 0;
         }
 
-        //TODO if it doesn't cause any problems
-        //closedir(dir);
+        //TODO does using strcpy add \0 at the end? if not then add with strcat
+        //Copy next name.
+        // strcpy(nextFile, student->dirent->d_name);
     }
+
+    //Check if the path contained another file.
+
+
+    //TODO if it doesn't cause any problems
+    //closedir(dir);
+}
+
+void handleNoCFile(Student *student) {
+
+    //Set student's grade tp 0.
+    student->result.grade = 0;
+
+    //Set the reason for the grade.
+    if (student->isMultipleDirectories) {
+
+        //TODO grade missing
+        //TODO is \n necessary when writing to .csv
+        strcat(student->result.feedback, ",MULTIPLE_DIRECTORIES");
+        // writeToFile(results, ",MULTIPLE_DIRECTORIES");
+
+        printf("Multiple directories.\n");
+
+    } else {
+
+        strcat(student->result.feedback, ",NO_C_FILE");
+        //writeToFile(results, ",NO_C_FILE");
+    }
+
+    printf("No c: %s\n", student->name);
+
 }
 
 int isDirectory(char *path) {
@@ -357,6 +548,21 @@ int isDirectory(char *path) {
 
     return S_ISDIR(pathStat.st_mode);
 
+}
+
+int isCFile(char *path) {
+
+    int length;
+
+    length = strlen(path);
+
+    //TODO make an actual check that a path is a file, and then check for .c, also make sure length > 3 is correct
+    if (length > 3 && path[length - 1] == 'c' && path[length - 2] == '.') {
+
+        return 1;
+    }
+
+    return 0;
 }
 
 void writeToFile(int file, char *message) {
@@ -433,14 +639,15 @@ int compileStudentFile(Student *student) {
                  student->homePath, student->dirent->d_name);
 
         //TODO go one dir up at the end.
-        isDirChanged = chdir(studentMainDirPath);
 
+        /*isDirChanged = chdir(studentMainDirPath);
         //Check if changing directory succeeded.
         if (isDirChanged < 0) {
 
             perror("Error: failed to change directory.\n");
             exit(1);
-        }
+        }*/
+
         //TODO change student.out to a.out
         char *args[] = {"gcc", student->cFilePath, "-o", "student.out", 0};
         int  retExec;
@@ -462,6 +669,7 @@ int compileStudentFile(Student *student) {
 }
 
 int executeStudentFile(Student *student, char *inputFilePath) {
+
     pid_t execPId;
     execPId = fork();
 
@@ -479,7 +687,8 @@ int executeStudentFile(Student *student, char *inputFilePath) {
                                0};
         int  studentOutputFile;
         int  inputFile;
-        int  execVal;
+        int  execValue;
+        int  closeValue;
 
         //TODO this file already gets opened in ex11, make sure it doesn't cause problems.
         //TODO delete all student files after they are no longer needed
@@ -503,16 +712,30 @@ int executeStudentFile(Student *student, char *inputFilePath) {
         }
 
         //Redirect input and output to files.
+        //TODO make if check it worked
         dup2(inputFile, 0);
         dup2(studentOutputFile, 1);
 
-        close(studentOutputFile);
-        close(inputFile);
+        closeValue = close(studentOutputFile);
 
-        execVal = execvp("./student.out", argsStudent);
+        //Check if output file was closed.
+        if (closeValue < 0) {
+
+            perror("Error: failed to close file.\n");
+        }
+
+        closeValue = close(inputFile);
+
+        //Check if input file was closed.
+        if (closeValue < 0) {
+
+            perror("Error: failed to close file.\n");
+        }
+
+        execValue = execvp("./student.out", argsStudent);
 
         //Check if execvp failed.
-        if (execVal == -1) {
+        if (execValue == -1) {
 
             perror("Error: execution failed.\n");
             exit(1);
@@ -528,17 +751,16 @@ int compareStudentFile(Student *student, char *correctOutput,
                        char *studentOutput) {
 
     pid_t compPId;
+    int   waitResult;
 
     compPId = fork();
 
     if (compPId == 0) {
 
-        char *argsComp[] = {"./comp.out", correctOutput, studentOutput,
-                            0};
+        char *argsComp[] = {"./comp.out", correctOutput, studentOutput, 0};
         int  compExec;
 
-        compExec = execvp("./comp.out",
-                          argsComp);
+        compExec = execvp("./comp.out", argsComp);
 
         if (compExec == -1) {
 
@@ -548,11 +770,84 @@ int compareStudentFile(Student *student, char *correctOutput,
 
     } else {
 
-        return waitForChildExec(&student->status.compareStatus);
+        //TODO handle the case in which comp.out failes at runtime.
+        waitResult = waitForChildExec(&student->status.compareStatus);
+
+        return WEXITSTATUS(student->status.compareStatus);
     }
 
 }
 
+int waitForChildExec(int *status) {
+
+    int waitVal;
+
+    waitVal = wait(status);
+
+    if (waitVal == -1) {
+
+        perror("Error: wait failed.\n");
+        exit(1);
+    }
+
+    if (WIFEXITED(*status)) {
+
+        printf("finished exec:%d.\n",
+               WEXITSTATUS(*status));
+
+        //Check if execution succeeded.
+        if (WEXITSTATUS(*status) == 1) {
+
+            return 0;
+        }
+
+        return 1;
+    }
+
+    //TODO delete if not necessary
+//        return -1;
+}
+
+void writeStudentResult(Student *student) {
+
+    int  results;
+    int  closeValue;
+    char resultToWrite[MAX_SIZE];
+
+    //Open results file.
+    results = open("results.csv", O_APPEND | O_WRONLY, 777);
+
+    //Check if results file was opened.
+    if (results < 0) {
+
+        perror("Error: failed to open file.\n");
+        exit(1);
+    }
+
+    //Check that the grade is not less a negative number.
+    if (student->result.grade < 0) {
+
+        student->result.grade = 0;
+    }
+
+    //Create student result.
+    sprintf(resultToWrite, "%s,%d%s\n", student->name, student->result.grade,
+            student->result.feedback);
+
+    //Write result to file.
+    writeToFile(results, resultToWrite);
+
+    closeValue = close(results);
+
+    //Check if file was closed.
+    if (closeValue < 0) {
+
+        perror("Error: failed to close file.\n");
+        exit(1);
+    }
+}
+
+//TODO delete if not needed
 Student initStudent() {
 
     Student student;
@@ -571,26 +866,4 @@ Student initStudent() {
     student.status.executeStatus = 0;
 
     return student;
-}
-
-int waitForChildExec(int *status) {
-
-    wait(status);
-
-    if (WIFEXITED(*status)) {
-
-        printf("finished exec:%d.\n",
-               WEXITSTATUS(*status));
-
-        //Check if execution succeeded.
-        if (WEXITSTATUS(*status) == 1) {
-
-            return 0;
-        }
-
-        return 1;
-    }
-
-    //TODO delete if not necessary
-//        return -1;
 }

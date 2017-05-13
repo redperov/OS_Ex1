@@ -1,4 +1,5 @@
 /home/redperov/ClionProjects/OS_Ex1/dirPath
 /home/redperov/ClionProjects/OS_Ex1/input.txt
-/home/redperov/ClionProjects/OS_Ex1/output.txt
+/home/redperov/ClionProjects/OS_Ex1/cmake-build-debug/output.txt
+
 
