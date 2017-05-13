@@ -60,6 +60,9 @@ typedef struct {
     //Boolean does the student have multiple directories.
     int isMultipleDirectories;
 
+    //Boolean did the student receive a timeout.
+    int isTimeOut;
+
     //Student's status.
     Status status;
 
@@ -162,6 +165,14 @@ void handleNoCFile(Student *student);
  */
 void writeStudentResult(Student *student);
 
+/**
+ * Handles process timeout.
+ * @param pid process id.
+ * @param status status.
+ * @return 0 timeout, 1 no timeout.
+ */
+int timeoutHandler(pid_t pid, int *status);
+
 int main(int argc, char *argv[]) {
 
     //Check that the number of command line arguments is correct.
@@ -190,7 +201,7 @@ int main(int argc, char *argv[]) {
     //Check if the file was opened.
     if (configFile < 0) {
 
-        perror("Error occurred while opening file.\n");
+        perror("Error: failed to open file.\n");
         exit(1);
     }
 
@@ -201,6 +212,7 @@ int main(int argc, char *argv[]) {
 
     closeValue = close(configFile);
 
+    //Check if the file was closed.
     if (closeValue < 0) {
 
         perror("Error: failed to close file.\n");
@@ -212,7 +224,7 @@ int main(int argc, char *argv[]) {
     //Check if the directory eas opened.
     if (mainDir == 0) {
 
-        perror("Error occurred while opening directory.\n");
+        perror("Error: failed to open directory.\n");
         exit(1);
     }
 
@@ -256,12 +268,15 @@ int main(int argc, char *argv[]) {
         //TODO free student and all its content
         Student *student;
 
+        //TODO move to initStudent
         student = (Student *) malloc(sizeof(Student));
         student->dirent   = studentDirent;
         student->name     = studentDirent->d_name;
         student->homePath = dirPath;
         student->depth    = -1;
         strcpy(student->result.feedback, "\0");
+        student->isMultipleDirectories = 0;
+        student->isTimeOut             = 0;
 
         //Set student's name in results file.
         //writeToFile(results, student.dirent->d_name);
@@ -296,7 +311,7 @@ int main(int argc, char *argv[]) {
                 strcat(student->result.feedback, ",WRONG_DIRECTORY");
             }
 
-            //compiles the C file.
+            //Compiles the C file.
             compileResult = compileStudentFile(student);
 
             //Check if compilation failed.
@@ -312,14 +327,11 @@ int main(int argc, char *argv[]) {
                 continue;
             }
 
-            //TODO handle timeout
+            //Executes the C file.
             executeResult = executeStudentFile(student, inputPath);
 
-            if (executeResult == 0) {
-
-                //TODO check what to do in that case, maybe just perror and exit
-            }
-
+            //Unlinks exe file.
+            //TODO what happens if I unlink it and the other process which caused timeout still runs
             unlinkResult = unlink("student.out");
 
             //Check if unlinked file.
@@ -327,6 +339,33 @@ int main(int argc, char *argv[]) {
 
                 perror("Error: failed to unlink file.\n");
                 exit(1);
+            }
+
+            //Check if execution worked.
+            if (executeResult == 0) {
+
+                //TODO check what to do in that case, maybe just perror and exit
+            }
+
+            //Check if there was a timeout.
+            if (student->isTimeOut) {
+
+                //Set student's grade tp 0.
+                student->result.grade = 0;
+                strcat(student->result.feedback, ",TIMEOUT");
+                writeStudentResult(student);
+
+                //Unlink student's output file.
+                unlinkResult = unlink("studentOutput.txt");
+
+                //Check if unlinked file.
+                if (unlinkResult < 0) {
+
+                    perror("Error: failed to unlink file.\n");
+                    exit(1);
+                }
+                //TODO make sure the there are no additional files created that weren't deleted
+                continue;
             }
 
             //Compare the student's result to the correct answer.
@@ -337,21 +376,18 @@ int main(int argc, char *argv[]) {
             switch (compareResult) {
 
                 case 1:
-                    //writeToFile(results, "WRONG_DIRECTORY");
                     strcat(student->result.feedback, ",GREAT_JOB");
                     break;
 
                 case 2:
                     //Set student's grade grade - 30.
                     student->result.grade -= 30;
-                    //writeToFile(results, "SIMILAR_OUTPUT");
                     strcat(student->result.feedback, ",SIMILAR_OUTPUT");
                     break;
 
                 case 3:
                     //Set student's grade tp 0.
                     student->result.grade = 0;
-                    // writeToFile(results, "BAD_OUTPUT");
                     strcat(student->result.feedback, ",BAD_OUTPUT");
                     break;
 
@@ -384,6 +420,9 @@ int main(int argc, char *argv[]) {
 
         //Write student's result.
         writeStudentResult(student);
+
+        //TODO free what's inside student, like cFilePath
+        free(student);
     }
 
 //TODO check if all opened files were closed.
@@ -671,6 +710,7 @@ int compileStudentFile(Student *student) {
 int executeStudentFile(Student *student, char *inputFilePath) {
 
     pid_t execPId;
+
     execPId = fork();
 
     //Check if fork succeeded.
@@ -732,6 +772,7 @@ int executeStudentFile(Student *student, char *inputFilePath) {
             perror("Error: failed to close file.\n");
         }
 
+        //Execute file.
         execValue = execvp("./student.out", argsStudent);
 
         //Check if execvp failed.
@@ -742,8 +783,19 @@ int executeStudentFile(Student *student, char *inputFilePath) {
         }
     } else {
 
-        //Wait for execution to end.
-        return waitForChildExec(&student->status.executeStatus);
+        int exitStatus;
+        int timerStatus;
+        //Check for timeout.
+        student->isTimeOut = timeoutHandler(execPId, &timerStatus);
+
+        if (student->isTimeOut == 1) {
+
+            return waitForChildExec(&exitStatus);
+
+        } else {
+
+            return 1;
+        }
     }
 }
 
@@ -845,6 +897,51 @@ void writeStudentResult(Student *student) {
         perror("Error: failed to close file.\n");
         exit(1);
     }
+}
+
+int timeoutHandler(pid_t pid, int *status) {
+
+    int counter = 5;
+    int waitResult;
+
+    //Run until time runs out.
+    while (counter != 0) {
+
+        waitResult = waitpid(pid, status, WNOHANG);
+
+        //Check if waitpid worked.
+        if (waitResult < 0) {
+
+            perror("Error: waitpid failed.\n");
+            exit(1);
+        }
+
+        //Check if process status was changed.
+        if (waitResult == 0) {
+
+            //Wait for a second.
+            sleep(1);
+            counter--;
+
+        } else {
+
+            return 0;
+        }
+    }
+
+    int killResult;
+
+    //Stop the process due to timeout.
+    killResult = kill(pid, SIGKILL);
+
+    //Check if kill worked.
+    if (killResult < 0) {
+
+        perror("Error: kill failed.\n");
+        exit(1);
+    }
+
+    return 1;
 }
 
 //TODO delete if not needed
