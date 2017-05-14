@@ -307,10 +307,6 @@ int main(int argc, char *argv[]) {
             //TODO make sure acceptable depth is 0 and not 1 in findCFile
             student->result.grade = 100 - (10 * student->depth);
 
-            if (student->depth > 0) {
-                strcat(student->result.feedback, ",WRONG_DIRECTORY");
-            }
-
             //Compiles the C file.
             compileResult = compileStudentFile(student);
 
@@ -393,6 +389,11 @@ int main(int argc, char *argv[]) {
 
                 default:
                     break;
+            }
+
+            //Check C file's depth.
+            if (student->depth > 0) {
+                strcat(student->result.feedback, ",WRONG_DIRECTORY");
             }
 
             //Unlink student's output file.
