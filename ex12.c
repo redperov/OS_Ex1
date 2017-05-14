@@ -422,7 +422,7 @@ int main(int argc, char *argv[]) {
         writeStudentResult(student);
 
         //TODO free what's inside student, like cFilePath
-        free(student);
+       // free(student);
     }
 
 //TODO check if all opened files were closed.
@@ -504,13 +504,13 @@ char *findCFile(char *initPath, Student *student) {
 
             if (isDirectory(temp)) {
 
-                strcpy(finalPath, temp);
+                strcpy(nextFile, temp);
                 dirCounter++;
             }
 
-            if (isCFile(temp)) {
+            else if (isCFile(temp)) {
 
-                strcpy(finalPath, temp);
+                strcpy(nextFile, temp);
                 isCFound = 1;
                 break;
             }
@@ -545,7 +545,7 @@ char *findCFile(char *initPath, Student *student) {
 
         //TODO does using strcpy add \0 at the end? if not then add with strcat
         //Copy next name.
-        // strcpy(nextFile, student->dirent->d_name);
+         strcpy(finalPath, nextFile);
     }
 
     //Check if the path contained another file.
