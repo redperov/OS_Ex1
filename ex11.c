@@ -58,7 +58,6 @@ int main(int argc, char *argv[]) {
     }
 
     return retVal;
-
 }
 
 int isFilesIdentical(char *fileName1, char *fileName2) {
@@ -66,12 +65,13 @@ int isFilesIdentical(char *fileName1, char *fileName2) {
     //Variable declaration.
     char buffer1[BUFFER_SIZE];
     char buffer2[BUFFER_SIZE];
-    int  file1     = 0;
-    int  file2     = 0;
-    int  stop      = 0;
-    int  readFile1 = 0;
-    int  readFile2 = 0;
-    int  retVal    = 1;
+    int  file1       = 0;
+    int  file2       = 0;
+    int  stop        = 0;
+    int  readFile1   = 0;
+    int  readFile2   = 0;
+    int  retVal      = 1;
+    int  closeResult = 0;
 
     //Open files for reading.
     file1 = openFileToRead(fileName1);
@@ -88,6 +88,7 @@ int isFilesIdentical(char *fileName1, char *fileName2) {
 
         readFile2 = read(file2, buffer2, 1);
 
+        //Check if read data.
         if (readFile2 < 0) {
 
             perror("Error while reading from file.\n");
@@ -107,9 +108,23 @@ int isFilesIdentical(char *fileName1, char *fileName2) {
         }
     }
 
-    //Close files.
-    close(file1);
-    close(file2);
+    closeResult = close(file1);
+
+    //Check if file was closed.
+    if (closeResult < 0) {
+
+        perror("Error: failed to close file.\n");
+        exit(1);
+    }
+
+    closeResult = close(file2);
+
+    //Check if file was closed.
+    if (closeResult < 0) {
+
+        perror("Error: failed to close file.\n");
+        exit(1);
+    }
 
     return retVal;
 }
@@ -119,14 +134,15 @@ int isFilesSimilar(char *fileName1, char *fileName2) {
     //Variable declaration.
     char buffer1[BUFFER_SIZE];
     char buffer2[BUFFER_SIZE];
-    int  file1     = 0;
-    int  file2     = 0;
-    int  stop      = 0;
-    int  isLetter1 = 0;
-    int  isLetter2 = 0;
-    int  readFile1 = 0;
-    int  readFile2 = 0;
-    int  retVal    = 1;
+    int  file1       = 0;
+    int  file2       = 0;
+    int  stop        = 0;
+    int  isLetter1   = 0;
+    int  isLetter2   = 0;
+    int  readFile1   = 0;
+    int  readFile2   = 0;
+    int  retVal      = 1;
+    int  closeResult = 0;
 
     //Open files for reading.
     file1 = openFileToRead(fileName1);
@@ -142,17 +158,20 @@ int isFilesSimilar(char *fileName1, char *fileName2) {
 
             readFile1 = read(file1, buffer1, 1);
 
+            //Check if read data.
             if (readFile1 < 0) {
 
                 perror("Error while reading from file.\n");
                 return 3;
             }
 
+            //Check if encountered a legal letter.
             if (readFile1 == 0) {
 
                 isLetter1 = 1;
             }
 
+            //Check if encountered an illegal letter.
             if ((*buffer1 != ' ') && (*buffer1 != '\n')) {
 
                 isLetter1 = 1;
@@ -164,17 +183,20 @@ int isFilesSimilar(char *fileName1, char *fileName2) {
 
             readFile2 = read(file2, buffer2, 1);
 
+            //Check if read data.
             if (readFile2 < 0) {
 
                 perror("Error while reading from file.\n");
                 return 3;
             }
 
+            //Check if encountered a legal letter.
             if (readFile2 == 0) {
 
                 isLetter2 = 1;
             }
 
+            //Check if encountered an illegal letter.
             if ((*buffer2 != ' ') && (*buffer2 != '\n')) {
 
                 isLetter2 = 1;
@@ -187,9 +209,6 @@ int isFilesSimilar(char *fileName1, char *fileName2) {
             stop = 1;
         }
 
-        //TODO delete that.
-        printf("Comparing %c, %c\n", *buffer1, *buffer2);
-
         //Convert to lower case chars.
         *buffer1 = tolower(*buffer1);
         *buffer2 = tolower(*buffer2);
@@ -200,12 +219,25 @@ int isFilesSimilar(char *fileName1, char *fileName2) {
             stop   = 1;
             retVal = 0;
         }
-
     }
 
-    //Close files.
-    close(file1);
-    close(file2);
+    closeResult = close(file1);
+
+    //Check if file was closed.
+    if (closeResult < 0) {
+
+        perror("Error: failed to close file.\n");
+        exit(1);
+    }
+
+    closeResult = close(file2);
+
+    //Check if file was closed.
+    if (closeResult < 0) {
+
+        perror("Error: failed to close file.\n");
+        exit(1);
+    }
 
     return retVal;
 }
@@ -221,9 +253,7 @@ int openFileToRead(char *fileName) {
 
         perror(fileName);
 
-        //TODO check if to close file1 if file1 failed to open
-
-        exit(3);
+        exit(1);
     }
 
     return file;
