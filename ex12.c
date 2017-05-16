@@ -1,3 +1,10 @@
+/******************************************
+* Student name: Danny Perov
+* Student ID: 318810637
+* Course Exercise Group: 05
+* Exercise name: Exercise 1
+******************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -9,6 +16,7 @@
 
 #define MAX_SIZE 160
 
+//Holds the the student's status
 typedef struct {
 
     //Compilation status.
@@ -21,6 +29,7 @@ typedef struct {
     int compareStatus;
 } Status;
 
+//Holds the student result.
 typedef struct {
 
     //Student's feedback.
@@ -30,6 +39,7 @@ typedef struct {
     int grade;
 } Result;
 
+//Holds the students info.
 typedef struct {
 
     //Student's name.
@@ -68,133 +78,142 @@ typedef struct {
 } Student;
 
 /**
- * Writes a message to the given file.
- * @param file file descriptor.
- * @param message message to write.
- */
-void writeToFile(int file, char *message);
+ * function name: WriteToFile.
+ * The input: file descriptor, message to write.
+ * The output: void.
+ * The function operation: Writes a message to the given file.
+*/
+void WriteToFile(int file, char *message);
 
 /**
- * Reads a line from a file into the given buffer.
- * @param fileDesc a file descriptor.
- * @param buffer array.
- */
-void readFromFile(int fileDesc, char buffer[]);
+ * function name: ReadFromFile.
+ * The input: file descriptor, array.
+ * The output: void.
+ * The function operation: Reads a line from a file into the given buffer.
+*/
+void ReadFromFile(int fileDesc, char *buffer);
 
 /**
- * Searches for a C file in the given directory.
- * @param initPath initial path to search.
- * @param student student struct.
- * @return path if found, else NULL.
- */
+ * function name: FindCFile.
+ * The input: initial path to search, student struct.
+ * The output: path if found, else NULL.
+ * The function operation: Searches for a C file in the given directory.
+*/
 char *
-findCFile(char *initPath, Student *student);
+FindCFile(char *initPath, Student *student);
 
 /**
- * Checks if the given path belongs to a directory.
- * @param path file path.
- * @return boolean.
- */
-int isDirectory(char *path);
+ * function name: IsDirectory.
+ * The input: file path.
+ * The output: boolean
+ * The function operation: Checks if the given path belongs to a directory.
+*/
+int IsDirectory(char *path);
 
 /**
- * Checks that the given path leads to a C file.
- * @param path path.
- * @return 1 true, 0 false.
- */
-int isCFile(char *path);
+ * function name: IsCFile.
+ * The input: path
+ * The output:  1 true, 0 false.
+ * The function operation: Checks that the given path leads to a C file.
+*/
+int IsCFile(char *path);
 
 /**
- * Adds error message to a student in the results file.
- * @param fileDesc file descriptor.
- * @param errorMessage error message.
- */
-void addErrorToStudent(int fileDesc, char *errorMessage);
+ * function name: InitStudent.
+ * The input: dirent, path.
+ * The output: Student.
+ * The function operation: Initializes a student.
+*/
+Student *InitStudent(struct dirent *studentDirent, char *dirPath);
 
 /**
- * Initializes a student.
- * @param studentDirent dirent.
- * @param dirPath directory path.
- * @return Student.
- */
-Student *initStudent(struct dirent *studentDirent, char *dirPath);
+ * function name: WaitForChildExec.
+ * The input: status.
+ * The output: -1 exec failed, 0 program failed, 1 succeeded.
+ * The function operation: Waits for the child to finish execution.
+*/
+int WaitForChildExec(int *status);
 
 /**
- * Waits for the child to finish execution.
- * @param status.
- * @return -1 exec failed, 0 program failed, 1 succeeded.
- */
-int waitForChildExec(int *status);
+ * function name: CompileStudentFile.
+ * The input: *Student
+ * The output: 0 if failed, 1 if succeeded.
+ * The function operation: Compiles the student's C file.
+*/
+int CompileStudentFile(Student *student);
 
 /**
- * Compiles the student's C file.
- * @param student *Student
- * @return 0 if failed, 1 if succeeded.
- */
-int compileStudentFile(Student *student);
+ * function name: ExecuteStudentFile.
+ * The input: student, input file path.
+ * The output:  0 if failed, 1 if succeeded.
+ * The function operation: Executes the student's C file.
+*/
+int ExecuteStudentFile(Student *student, char *inputFilePath);
 
 /**
- * Executes the student's C file.
- * @param student student.
- * @param inputFilePath input file path.
- * @return 0 if failed, 1 if succeeded.
- */
-int executeStudentFile(Student *student, char *inputFilePath);
-
-/**
- * Compares between the correct and student's outputs.
- * @param student student
- * @param correctOutput correct output path.
- * @param studentOutput student's output path.
- * @return -1 different, 0 similar, 1 same.
- */
-int compareStudentFile(Student *student, char *correctOutput,
+ * function name: CompareStudentFile.
+ * The input: student, correct output path,  student's output path.
+ * The output: -1 different, 0 similar, 1 same.
+ * The function operation: Compares between the correct and student's outputs.
+*/
+int CompareStudentFile(Student *student, char *correctOutput,
                        char *studentOutput);
 
 /**
- * Handles the case in which a C file was not found.
- * @param student student.
- */
-void handleNoCFile(Student *student);
+ * function name: HandleNoCFile.
+ * The input: student.
+ * The output: void.
+ * The function operation: Handles the case in which a C file was not found.
+*/
+void HandleNoCFile(Student *student);
 
 /**
- * Writes the student's result into the results file.
- * @param student student.
- */
-void writeStudentResult(Student *student);
+ * function name: WriteStudentResult.
+ * The input: student.
+ * The output: void.
+ * The function operation: Writes the student's result into the results file.
+*/
+void WriteStudentResult(Student *student);
 
 /**
- * Handles process timeout.
- * @param pid process id.
- * @param status status.
- * @return 0 timeout, 1 no timeout.
- */
-int timeoutHandler(pid_t pid, int *status);
+ * function name: TimeoutHandler.
+ * The input: process id, status.
+ * The output: 0 timeout, 1 no timeout.
+ * The function operation:  Handles process timeout.
+*/
+int TimeoutHandler(pid_t pid, int *status);
 
 /**
- * Frees the student and his content.
- * @param student student.
- */
-void freeStudent(Student *student);
+ * function name: FreeStudent.
+ * The input: student.
+ * The output: void.
+ * The function operation: Frees the student and his content.
+*/
+void FreeStudent(Student *student);
 
 /**
- * Handles compilation error of student's file.
- * @param student student.
- */
-void handleCompilationError(Student *student);
+ * function name: HandleCompilationError.
+ * The input: student.
+ * The output: void.
+ * The function operation:  Handles compilation error of student's file.
+*/
+void HandleCompilationError(Student *student);
 
 /**
- * Handle student's comparison result.
- * @param student student.
- * @param compareResult comparison result.
- */
-void handleComparisonResult(Student *student, int compareResult);
+ * function name: HandleComparisonResult.
+ * The input: student.
+ * The output: comparison result.
+ * The function operation: Handle student's comparison result.
+*/
+void HandleComparisonResult(Student *student, int compareResult);
 
 /**
- * handles timeout of student's file.
- * @param student student.
- */
-void handleTimeout(Student *student);
+ * function name: HandleTimeout.
+ * The input: student.
+ * The output: void.
+ * The function operation: Handles timeout of student's file.
+*/
+void HandleTimeout(Student *student);
 
 int main(int argc, char *argv[]) {
 
@@ -232,9 +251,9 @@ int main(int argc, char *argv[]) {
     }
 
     //Read the file paths.
-    readFromFile(configFile, dirPath);
-    readFromFile(configFile, inputPath);
-    readFromFile(configFile, outputPath);
+    ReadFromFile(configFile, dirPath);
+    ReadFromFile(configFile, inputPath);
+    ReadFromFile(configFile, outputPath);
 
     closeValue = close(configFile);
 
@@ -293,20 +312,21 @@ int main(int argc, char *argv[]) {
         Student *student;
 
         //Initialize student.
-        student = initStudent(studentDirent, dirPath);
+        student = InitStudent(studentDirent, dirPath);
 
         //Search for the student's C file.
-        studentPath = findCFile(dirPath, student);
+        studentPath = FindCFile(dirPath, student);
 
         student->cFilePath = studentPath;
 
         //Check if C file was found.
         if (student->cFilePath == 0) {
 
-            handleNoCFile(student);
+            HandleNoCFile(student);
 
         } else {
 
+            //Variable declarations.
             int compileResult;
             int executeResult;
             int compareResult;
@@ -317,17 +337,17 @@ int main(int argc, char *argv[]) {
             student->result.grade = 100 - (10 * student->depth);
 
             //Compiles the C file.
-            compileResult = compileStudentFile(student);
+            compileResult = CompileStudentFile(student);
 
             //Check if compilation failed.
             if (compileResult == 0) {
 
-                handleCompilationError(student);
+                HandleCompilationError(student);
                 continue;
             }
 
             //Executes the C file.
-            executeResult = executeStudentFile(student, inputPath);
+            executeResult = ExecuteStudentFile(student, inputPath);
 
             //Unlinks exe file.
             unlinkResult = unlink("student.out");
@@ -339,25 +359,19 @@ int main(int argc, char *argv[]) {
                 exit(1);
             }
 
-            //Check if execution worked.
-            if (executeResult == 0) {
-
-                //TODO check what to do in that case, maybe just perror and exit
-            }
-
             //Check if there was a timeout.
             if (student->isTimeOut) {
 
-                handleTimeout(student);
+                HandleTimeout(student);
                 continue;
             }
 
             //Compare the student's result to the correct answer.
-            compareResult = compareStudentFile(student, outputPath,
+            compareResult = CompareStudentFile(student, outputPath,
                                                "studentOutput.txt");
 
             //Handle comparison result.
-            handleComparisonResult(student, compareResult);
+            HandleComparisonResult(student, compareResult);
 
             //Unlink student's output file.
             unlinkResult = unlink("studentOutput.txt");
@@ -371,9 +385,9 @@ int main(int argc, char *argv[]) {
         }
 
         //Write student's result.
-        writeStudentResult(student);
+        WriteStudentResult(student);
 
-        freeStudent(student);
+        FreeStudent(student);
     }
 
     //Close main directory.
@@ -387,8 +401,9 @@ int main(int argc, char *argv[]) {
     }
 }
 
-char *findCFile(char *initPath, Student *student) {
+char *FindCFile(char *initPath, Student *student) {
 
+    //Variable declarations.
     int  stop        = 0;
     int  dirCounter  = 0;
     int  isCFound    = 0;
@@ -397,6 +412,7 @@ char *findCFile(char *initPath, Student *student) {
     char nextFile[MAX_SIZE];
     DIR  *dir;
 
+    //Set path name.
     strcpy(finalPath, initPath);
     strcat(finalPath, "/");
     strcat(finalPath, student->dirent->d_name);
@@ -412,15 +428,6 @@ char *findCFile(char *initPath, Student *student) {
 
             strcpy(retPath, finalPath);
             strcat(retPath, "\0");
-
-           /* closeResult = closedir(dir);
-
-            //Check if directory was closed.
-            if (closeResult < 0) {
-
-                perror("Error: failed to close directory.\n");
-                exit(1);
-            }*/
 
             return retPath;
         }
@@ -458,11 +465,11 @@ char *findCFile(char *initPath, Student *student) {
             strcat(temp, "/");
             strcat(temp, student->dirent->d_name);
 
-            if (isDirectory(temp)) {
+            if (IsDirectory(temp)) {
 
                 strcpy(nextFile, temp);
                 dirCounter++;
-            } else if (isCFile(temp)) {
+            } else if (IsCFile(temp)) {
 
                 strcpy(nextFile, temp);
                 isCFound = 1;
@@ -498,7 +505,7 @@ char *findCFile(char *initPath, Student *student) {
     }
 }
 
-void handleNoCFile(Student *student) {
+void HandleNoCFile(Student *student) {
 
     //Set student's grade tp 0.
     student->result.grade = 0;
@@ -514,7 +521,7 @@ void handleNoCFile(Student *student) {
     }
 }
 
-int isDirectory(char *path) {
+int IsDirectory(char *path) {
 
     struct stat pathStat;
     stat(path, &pathStat);
@@ -522,12 +529,14 @@ int isDirectory(char *path) {
     return S_ISDIR(pathStat.st_mode);
 }
 
-int isCFile(char *path) {
+int IsCFile(char *path) {
 
+    //Variable declarations.
     int length;
 
     length = strlen(path);
 
+    //Check if is a C file.
     if (length > 2 && path[length - 1] == 'c' && path[length - 2] == '.') {
 
         return 1;
@@ -536,8 +545,9 @@ int isCFile(char *path) {
     return 0;
 }
 
-void writeToFile(int file, char *message) {
+void WriteToFile(int file, char *message) {
 
+    //Variable declarations.
     int bytesWrote;
 
     bytesWrote = write(file, message, strlen(message));
@@ -550,8 +560,9 @@ void writeToFile(int file, char *message) {
     }
 }
 
-void readFromFile(int fileDesc, char buffer[]) {
+void ReadFromFile(int fileDesc, char *buffer) {
 
+    //Variable declarations.
     int counter = 0;
     int stop    = 0;
     int readNum = 0;
@@ -571,7 +582,6 @@ void readFromFile(int fileDesc, char buffer[]) {
         //Check if there if a need to stop.
         if ((readNum == 0) || (buffer[counter] == '\n')) {
 
-            //TODO maybe there is a need to move the read by one to get the next line
             buffer[counter] = '\0';
             stop = 1;
         }
@@ -580,13 +590,10 @@ void readFromFile(int fileDesc, char buffer[]) {
     }
 }
 
-int compileStudentFile(Student *student) {
+int CompileStudentFile(Student *student) {
 
+    //Variable declarations.
     pid_t compilePId;
-    pid_t execPId;
-    int   compileStatus;
-    int   execStatus;
-    int   isDirChanged;
 
     compilePId = fork();
 
@@ -610,12 +617,13 @@ int compileStudentFile(Student *student) {
         }
     } else {
 
-        return waitForChildExec(&student->status.compileStatus);
+        return WaitForChildExec(&student->status.compileStatus);
     }
 }
 
-int executeStudentFile(Student *student, char *inputFilePath) {
+int ExecuteStudentFile(Student *student, char *inputFilePath) {
 
+    //Variable declarations.
     pid_t execPId;
 
     execPId = fork();
@@ -631,6 +639,8 @@ int executeStudentFile(Student *student, char *inputFilePath) {
 
         char *argsStudent[] = {"./student.out", inputFilePath,
                                0};
+
+        //Variable declarations.
         int  studentOutputFile;
         int  inputFile;
         int  execValue;
@@ -702,15 +712,17 @@ int executeStudentFile(Student *student, char *inputFilePath) {
         }
     } else {
 
+        //Variable declarations.
         int exitStatus;
         int timerStatus;
 
         //Check for timeout.
-        student->isTimeOut = timeoutHandler(execPId, &timerStatus);
+        student->isTimeOut = TimeoutHandler(execPId, &timerStatus);
 
         if (student->isTimeOut == 1) {
 
-            return waitForChildExec(&exitStatus);
+            //Wait for child process to finish.
+            return WaitForChildExec(&exitStatus);
 
         } else {
 
@@ -719,21 +731,30 @@ int executeStudentFile(Student *student, char *inputFilePath) {
     }
 }
 
-int compareStudentFile(Student *student, char *correctOutput,
+int CompareStudentFile(Student *student, char *correctOutput,
                        char *studentOutput) {
 
+    //Variable declarations.
     pid_t compPId;
-    int   waitResult;
 
     compPId = fork();
+
+    //Check if fork succeeded.
+    if(compPId == -1){
+
+        perror("Error: fork failed.\n");
+        exit(1);
+    }
 
     if (compPId == 0) {
 
         char *argsComp[] = {"./comp.out", correctOutput, studentOutput, 0};
         int  compExec;
 
+        //Execute comparison.
         compExec = execvp("./comp.out", argsComp);
 
+        //Check if execution worked.
         if (compExec == -1) {
 
             perror("Error: execution failed.\n");
@@ -742,16 +763,16 @@ int compareStudentFile(Student *student, char *correctOutput,
 
     } else {
 
-        //TODO handle the case in which comp.out failes at runtime.
-        waitResult = waitForChildExec(&student->status.compareStatus);
+        //Wait for child process to finish.
+        WaitForChildExec(&student->status.compareStatus);
 
         return WEXITSTATUS(student->status.compareStatus);
     }
-
 }
 
-int waitForChildExec(int *status) {
+int WaitForChildExec(int *status) {
 
+    //Variable declarations.
     int waitVal;
 
     waitVal = wait(status);
@@ -762,6 +783,7 @@ int waitForChildExec(int *status) {
         exit(1);
     }
 
+    //Check status.
     if (WIFEXITED(*status)) {
 
         //Check if execution succeeded.
@@ -774,8 +796,9 @@ int waitForChildExec(int *status) {
     }
 }
 
-void writeStudentResult(Student *student) {
+void WriteStudentResult(Student *student) {
 
+    //Variable declarations.
     int  results;
     int  closeValue;
     char resultToWrite[MAX_SIZE];
@@ -801,7 +824,7 @@ void writeStudentResult(Student *student) {
             student->result.feedback);
 
     //Write result to file.
-    writeToFile(results, resultToWrite);
+    WriteToFile(results, resultToWrite);
 
     closeValue = close(results);
 
@@ -813,8 +836,9 @@ void writeStudentResult(Student *student) {
     }
 }
 
-int timeoutHandler(pid_t pid, int *status) {
+int TimeoutHandler(pid_t pid, int *status) {
 
+    //Variable declarations.
     int counter = 5;
     int waitResult;
 
@@ -858,8 +882,9 @@ int timeoutHandler(pid_t pid, int *status) {
     return 1;
 }
 
-Student *initStudent(struct dirent *studentDirent, char *dirPath) {
+Student *InitStudent(struct dirent *studentDirent, char *dirPath) {
 
+    //Variable declarations.
     Student *student;
 
     student = (Student *) malloc(sizeof(Student));
@@ -883,30 +908,31 @@ Student *initStudent(struct dirent *studentDirent, char *dirPath) {
     return student;
 }
 
-void freeStudent(Student *student) {
+void FreeStudent(Student *student) {
 
     free(student->cFilePath);
     free(student);
 }
 
-void handleCompilationError(Student *student) {
+void HandleCompilationError(Student *student) {
 
     //Set student's grade tp 0.
     student->result.grade = 0;
     strcat(student->result.feedback, ",COMPILATION_ERROR");
-    writeStudentResult(student);
-    freeStudent(student);
+    WriteStudentResult(student);
+    FreeStudent(student);
 }
 
-void handleTimeout(Student *student) {
+void HandleTimeout(Student *student) {
 
+    //Variable declarations.
     int unlinkResult;
 
     //Set student's grade tp 0.
     student->result.grade = 0;
     strcat(student->result.feedback, ",TIMEOUT");
-    writeStudentResult(student);
-    freeStudent(student);
+    WriteStudentResult(student);
+    FreeStudent(student);
 
     //Unlink student's output file.
     unlinkResult = unlink("studentOutput.txt");
@@ -919,7 +945,7 @@ void handleTimeout(Student *student) {
     }
 }
 
-void handleComparisonResult(Student *student, int compareResult) {
+void HandleComparisonResult(Student *student, int compareResult) {
 
     switch (compareResult) {
 
@@ -930,7 +956,7 @@ void handleComparisonResult(Student *student, int compareResult) {
         case 2:
             //Set student's grade grade - 30.
             student->result.grade -= 30;
-            strcat(student->result.feedback, ",SIMILAR_OUTPUT");
+            strcat(student->result.feedback, ",SIMILLAR_OUTPUT");
             break;
 
         case 3:

@@ -1,3 +1,10 @@
+/******************************************
+* Student name: Danny Perov
+* Student ID: 318810637
+* Course Exercise Group: 05
+* Exercise name: Exercise 1
+******************************************/
+
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -7,27 +14,28 @@
 #define BUFFER_SIZE 1
 
 /**
-* Checks if the files are identical.
-* @param fileName1 file path.
-* @param fileName2 file path.
-* @return 1 if the files are identical, else 0.
+ * function name: IsFilesIdentical.
+ * The input: file path, file path.
+ * The output: 1 if the files are identical, else 0.
+ * The function operation: Checks if the files are identical.
 */
-int isFilesIdentical(char *fileName1, char *fileName2);
+int IsFilesIdentical(char *fileName1, char *fileName2);
 
 /**
- * Checks if the files are similar.
- * @param fileName1 file path.
- * @param fileName2 file path.
- * @return 1 if the files are similar, else 0.
- */
-int isFilesSimilar(char *fileName1, char *fileName2);
+ * function name: IsFilesSimilar.
+ * The input: file path, file path.
+ * The output: 1 if the files are similar, else 0.
+ * The function operation: Checks if the files are similar.
+*/
+int IsFilesSimilar(char *fileName1, char *fileName2);
 
 /**
- * Opens a given file path for reading.
- * @param fileName file path.
- * @return file descriptor.
- */
-int openFileToRead(char *fileName);
+ * function name: OpenFileToRead.
+ * The input: file path.
+ * The output: file descriptor.
+ * The function operation: Opens a given file path for reading.
+*/
+int OpenFileToRead(char *fileName);
 
 int main(int argc, char *argv[]) {
 
@@ -172,7 +180,7 @@ int isFilesSimilar(char *fileName1, char *fileName2) {
             }
 
             //Check if encountered an illegal letter.
-            if ((*buffer1 != ' ') && (*buffer1 != '\n')) {
+            if (!isspace(*buffer1) && (*buffer1 != '\n')) {
 
                 isLetter1 = 1;
             }
@@ -197,7 +205,7 @@ int isFilesSimilar(char *fileName1, char *fileName2) {
             }
 
             //Check if encountered an illegal letter.
-            if ((*buffer2 != ' ') && (*buffer2 != '\n')) {
+            if ((!isspace(*buffer2)) && (*buffer2 != '\n')) {
 
                 isLetter2 = 1;
             }
@@ -244,6 +252,7 @@ int isFilesSimilar(char *fileName1, char *fileName2) {
 
 int openFileToRead(char *fileName) {
 
+    //Variable declarations.
     int file = 0;
 
     file = open(fileName, O_RDONLY);
